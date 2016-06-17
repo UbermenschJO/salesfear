@@ -14,7 +14,7 @@
   SObject
   (getId [this] (Id. id))
   (getType [this] type)
-  (getField [this k] (this (keyword k)))
+  (getField [this k] ((keyword k) this))
   (isFieldSet [this k] (contains? this (keyword k)))
   (getAllFields [this] (into {} (for [[k v] this]
                                   (when-not (or (= :type k)
@@ -169,6 +169,12 @@
   ([x _]
    (if (string? x) x (soql-literal x))))
 
+(defn- soql-literal->
+  ([fields]
+   (persistent! (reduce (fn [m [k v]] (assoc! m k (soql-literal v nil))) (transient (empty {})) fields)))
+  ([type id fields]
+   (sobject type id (persistent! (reduce (fn [m [k v]] (assoc! m k (soql-literal v nil))) (transient (empty {})) fields)))))
+
 (defn soql-where
   "Given a map of fields to values, returns a string like field1 = \"value1\" AND field2 = 2.4"
   [constraints]
@@ -215,10 +221,7 @@
   "Creates an sobject. Returns id if created, throws errors. Might return false
   if not successful, whenever that happens."
   ([type fields] (create type nil fields))
-  ([type id fields] (create (sobject type id
-                                     (persistent!
-                                      (reduce (fn [m [k v]] (assoc! m k (soql-literal v nil)))
-                                              (transient (empty {})) fields)))))
+  ([type id fields] (create (soql-literal-> type id fields)))
   ([sobject]
   (let [res (.create (rest-conn) sobject)]
         (if (.isSuccess res)
@@ -300,7 +303,7 @@
 (defn update
   "Updates an sobject. Returns sobject."
   ([type id fields]
-   (update (sobject type id (persistent! (reduce (fn [m [k v]] (assoc! m k (soql-literal v nil))) (transient (empty {})) fields)))))
+   (update (soql-literal-> type id fields)))
   ([sobject]
    (.update (rest-conn) sobject)
    sobject))
@@ -308,5 +311,9 @@
 (defn upsert
   "Upserts an sobject, given an sobject and the field name of the external id
   field."
-  [sobject external-id-field]
-  (.upsert (rest-conn) sobject external-id-field))
+  ([sobject]
+   (upsert sobject "id"))
+  ([sobject external-id-field]
+   (.upsert (rest-conn) sobject external-id-field))
+  ([type id fields]
+   (upsert (soql-literal-> type id fields))))
