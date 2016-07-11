@@ -314,7 +314,7 @@
   ([sobject]
    (upsert sobject "id"))
   ([sobject external-id-field]
-   (if (= "null" ((keyword external-id-field) sobject))
+   (if (= "" ((keyword external-id-field) sobject))
      (create sobject)
      (do (.upsert (rest-conn) sobject external-id-field)
          ((keyword external-id-field) sobject))))
