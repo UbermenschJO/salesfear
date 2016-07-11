@@ -158,7 +158,7 @@
 
   I haven't actually verified soql's syntax, so this could bite you. :-D"
   ([x]
-   (cond (nil? x) "null"
+   (cond (nil? x) ""
          (true? x) "true"
          (false? x) "false"
          (keyword? x) (name x)
